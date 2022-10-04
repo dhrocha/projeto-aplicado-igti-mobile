@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Button,
   Divider,
@@ -9,8 +9,10 @@ import {
   ListItem,
   Select,
   SelectItem,
+  ViewPager,
 } from "@ui-kitten/components";
-import { Linking, StyleSheet } from "react-native";
+import { FlatList, Linking, ScrollView, StyleSheet, Text } from "react-native";
+import axios from "axios";
 
 // import { StyleSheet, View } from "react-native";
 
@@ -31,21 +33,53 @@ const renderItemIcon = (props) => (
 
 const renderItem = ({ item, index }) => (
   <ListItem
-    title={`${item.title} ${index + 1}`}
-    description={`${item.description} ${index + 1}`}
+    title={`${item.title}`}
+    description={`${item.description}`}
     accessoryLeft={renderItemIcon}
     accessoryRight={renderItemAccessory}
   />
 );
 
 export default function Search() {
-  const [selectedIndex, setSelectedIndex] = React.useState(new IndexPath(0));
-  const data = new Array(15).fill({
-    title: "Restaurante XPTO",
-    description: "Endereço",
-  });
+  const [selectedCity, setSelectedCity] = React.useState("");
+  const [selectedNeighbor, setSelectedNeighbor] = React.useState("");
+  const [cities, setCities] = useState([]);
+  const [neighborhoods, setNeighborhoods] = useState([]);
+  const [cityValue, setCityValue] = useState("");
+  const [neighborValue, setNeighborValue] = useState("");
+  const [listData, setListData] = useState([]);
 
-  // const [neighbor, setNeighbor] = useState("");
+  const loadCities = async () => {
+    const { data } = await axios.get("http://localhost:3000/cities");
+    setCities(data);
+  };
+
+  const loadNeighbors = async () => {
+    const { data } = await axios.get("http://localhost:3000/neighborhoods");
+    setNeighborhoods(data);
+  };
+
+  const loadPlaces = async () => {
+    const { data } = await axios.get(
+      `http://localhost:3000/places?city=${cityValue.id}&neighborhood=${neighborValue.id}`
+    );
+    console.log(data);
+    setListData(data);
+  };
+
+  useEffect(() => {
+    loadCities();
+    loadNeighbors();
+  }, []);
+
+  useEffect(() => {
+    selectedCity && setCityValue(cities[selectedCity.row]);
+    selectedNeighbor && setNeighborValue(neighborhoods[selectedNeighbor.row]);
+
+    if (selectedCity && selectedNeighbor) {
+      loadPlaces();
+    }
+  }, [selectedCity, selectedNeighbor]);
 
   return (
     <Layout
@@ -58,29 +92,31 @@ export default function Search() {
     >
       <Select
         label="Cidade"
-        selectedIndex={selectedIndex}
-        onSelect={(index) => setSelectedIndex(index)}
+        selectedIndex={selectedCity}
+        onSelect={(index) => setSelectedCity(index)}
         style={{ width: "95%", margin: 10 }}
+        value={cityValue.name}
       >
-        <SelectItem title="Option 1" />
-        <SelectItem title="Option 2" />
-        <SelectItem title="Option 3" />
+        {cities?.map((city) => (
+          <SelectItem title={city.name} value={city.id} key={Math.random()} />
+        ))}
       </Select>
       <Select
         label="Bairro"
-        selectedIndex={selectedIndex}
-        onSelect={(index) => setSelectedIndex(index)}
+        selectedIndex={selectedNeighbor}
+        onSelect={(index) => setSelectedNeighbor(index)}
         style={{ width: "95%" }}
+        value={neighborValue.name}
       >
-        <SelectItem title="Option 1" />
-        <SelectItem title="Option 2" />
-        <SelectItem title="Option 3" />
+        {neighborhoods?.map((n) => (
+          <SelectItem title={n.name} value={n.id} key={Math.random()} />
+        ))}
       </Select>
       <List
-        data={data}
+        data={listData}
         renderItem={renderItem}
-        style={styles.container}
         ItemSeparatorComponent={Divider}
+        style={styles.container}
       />
     </Layout>
   );
@@ -90,5 +126,6 @@ const styles = StyleSheet.create({
   container: {
     maxHeight: 550,
     width: "95%",
+    marginTop: 15,
   },
 });

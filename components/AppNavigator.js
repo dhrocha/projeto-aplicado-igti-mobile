@@ -25,7 +25,7 @@ const TabNavigator = () => {
   return (
     <Navigator tabBar={(props) => <BottomTabBar {...props} />}>
       <Screen name="Home" component={Home} />
-      <Screen name="Buscar" component={Search} />
+      <Screen name="Buscar Estabelecimentos" component={Search} />
       <Screen name="Cartões" component={Cards} />
     </Navigator>
   );
