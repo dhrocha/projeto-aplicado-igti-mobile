@@ -3,68 +3,66 @@ import {
   Button,
   Divider,
   Icon,
-  IndexPath,
   Layout,
   List,
   ListItem,
   Select,
   SelectItem,
-  ViewPager,
+  Spinner,
 } from "@ui-kitten/components";
-import { FlatList, Linking, ScrollView, StyleSheet, Text } from "react-native";
-import axios from "axios";
+import { StyleSheet, View } from "react-native";
 
-// import { StyleSheet, View } from "react-native";
+import openMap from "react-native-open-maps";
+import { API } from "../api/api";
 
-const renderItemAccessory = (props) => (
-  <Button
-    size="tiny"
-    onPress={() =>
-      Linking.openURL("http://maps.apple.com/maps?daddr=38.7875851,-9.3906089")
-    }
-  >
-    MAPA
-  </Button>
-);
+const renderItemAccessory = (props) => {
+  const { item } = props;
+  const coordinates = item.coordinates.split(",");
 
-const renderItemIcon = (props) => (
-  <Icon {...props} name="checkmark-circle-outline" />
-);
+  const goToPlace = () => {
+    openMap({
+      latitude: Number(coordinates[0]),
+      longitude: Number(coordinates[1]),
+      zoom: 30,
+    });
+  };
+
+  return (
+    <Button size="tiny" onPress={goToPlace}>
+      MAPA
+    </Button>
+  );
+};
+
+const renderItemIcon = (props) => <Icon {...props} name="pin-outline" />;
 
 const renderItem = ({ item, index }) => (
   <ListItem
     title={`${item.title}`}
     description={`${item.description}`}
     accessoryLeft={renderItemIcon}
-    accessoryRight={renderItemAccessory}
+    accessoryRight={(props) => renderItemAccessory({ ...{ item }, ...props })}
   />
 );
 
 export default function Search() {
-  const [selectedCity, setSelectedCity] = React.useState("");
-  const [selectedNeighbor, setSelectedNeighbor] = React.useState("");
+  const [selectedCity, setSelectedCity] = useState("");
+  const [selectedNeighbor, setSelectedNeighbor] = useState("");
   const [cities, setCities] = useState([]);
   const [neighborhoods, setNeighborhoods] = useState([]);
   const [cityValue, setCityValue] = useState("");
   const [neighborValue, setNeighborValue] = useState("");
   const [listData, setListData] = useState([]);
+  const [loading, setLoading] = useState(false);
 
   const loadCities = async () => {
-    const { data } = await axios.get("http://localhost:3000/cities");
+    const { data } = await API.get("/cities");
     setCities(data);
   };
 
   const loadNeighbors = async () => {
-    const { data } = await axios.get("http://localhost:3000/neighborhoods");
+    const { data } = await API.get("/neighborhoods");
     setNeighborhoods(data);
-  };
-
-  const loadPlaces = async () => {
-    const { data } = await axios.get(
-      `http://localhost:3000/places?city=${cityValue.id}&neighborhood=${neighborValue.id}`
-    );
-    console.log(data);
-    setListData(data);
   };
 
   useEffect(() => {
@@ -72,12 +70,22 @@ export default function Search() {
     loadNeighbors();
   }, []);
 
+  const loadPlaces = async (city, neighbor) => {
+    setLoading(true);
+
+    const { data } = await API.get(
+      `/places?city=${city.id}&neighborhood=${neighbor.id}`
+    );
+    setListData(data);
+    setLoading(false);
+  };
+
   useEffect(() => {
     selectedCity && setCityValue(cities[selectedCity.row]);
     selectedNeighbor && setNeighborValue(neighborhoods[selectedNeighbor.row]);
 
     if (selectedCity && selectedNeighbor) {
-      loadPlaces();
+      loadPlaces(cities[selectedCity.row], neighborhoods[selectedNeighbor.row]);
     }
   }, [selectedCity, selectedNeighbor]);
 
@@ -112,12 +120,18 @@ export default function Search() {
           <SelectItem title={n.name} value={n.id} key={Math.random()} />
         ))}
       </Select>
-      <List
-        data={listData}
-        renderItem={renderItem}
-        ItemSeparatorComponent={Divider}
-        style={styles.container}
-      />
+      {loading ? (
+        <View style={styles.spinnerControl}>
+          <Spinner />
+        </View>
+      ) : (
+        <List
+          data={listData}
+          renderItem={renderItem}
+          ItemSeparatorComponent={Divider}
+          style={styles.container}
+        />
+      )}
     </Layout>
   );
 }
@@ -127,5 +141,8 @@ const styles = StyleSheet.create({
     maxHeight: 550,
     width: "95%",
     marginTop: 15,
+  },
+  spinnerControl: {
+    marginTop: 20,
   },
 });
